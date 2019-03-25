@@ -1,5 +1,6 @@
 package demo.ms.message.stream;
 
+import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
 import demo.ms.common.entity.Message;
 import demo.ms.message.repository.MessageRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,14 +21,15 @@ public class MessageListener {
     @Resource
     private SimpMessagingTemplate simpMessagingTemplate;
 
+    @HystrixCommand(commandKey = "SendMessage")
     @StreamListener(LoggerEventSource.MESSAGE_QUEUE)
     public void input(Message message){
         messageRepository.save(message);
         if(message.getUserId()!=null){
-            simpMessagingTemplate.convertAndSendToUser(String.valueOf(message.getUserId()),"/queue/messages",message
-                    .getContent());
+            simpMessagingTemplate.convertAndSend(String.format("/queue/user_%s_messages",message.getUserId()),message
+                                                                                                                        .getContent());
         }else{
-            simpMessagingTemplate.convertAndSend(String.format("/topic/project/%s/logs",message.getProjectId()),message
+            simpMessagingTemplate.convertAndSend(String.format("/topic/project_%s_logs",message.getProjectId()),message
                     .getContent());
         }
     }
